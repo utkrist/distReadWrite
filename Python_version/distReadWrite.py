@@ -1,20 +1,27 @@
-"""" TODO
-Synchronisation of join
-- Way to deal with inconsistency when two separate clusters try to join the the network simultaneously
-  or to put it into perspectve : what to do about the request to join from a cluster when a network update is in progress.
+'''
+TODO
+* Synchronisation of join
+  - Way to deal with inconsistency when two separate clusters try to join the the network simultaneously
+    or to put it into perspectve : what to do about the request to join from a cluster when a network update is in progress.
+* Synchronisation of join
+'''
 
-Synchronisation of join
-""""
-
-import xmlrpclib, sys, argparse, threading
+import xmlrpclib, sys, argparse, threading, SocketServer
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 
-IP = 0, PORT = 1                      # Some constants
-my_ip = "localhost", my_port =  2000  # Network address of the current node
-my_neighbor = []                      # Store ip_addr and port of each neighbor
+# Some constants
+IP = 0
+PORT = 1                      
+
+# Network address of the current node
+my_ip = "localhost"
+my_port =  2000
+
+# Store ip_addr and port of each neighbor
+my_neighbor = []                      
 
 # Mix-in for threaded xmlrpc server
-class ThreadedXMLRPCServer(ThreadingMixIn, SimpleXMLRPCServer):pass
+class ThreadedXMLRPCServer(SocketServer.ThreadingMixIn, SimpleXMLRPCServer):pass
 
 class MethodLibrary:
 	# Updates the neighbor with the list received from node of another cluster
@@ -83,15 +90,3 @@ def parse_args():
 if __name__ == "__main__":
 	parse_args()	
 	main()
-
-
-
-
-
-
-
-
-
-
-
-
