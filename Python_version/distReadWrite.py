@@ -25,55 +25,53 @@ class ThreadedXMLRPCServer(SocketServer.ThreadingMixIn, SimpleXMLRPCServer):pass
 
 class MethodLibrary:
 	# Updates the neighbor with the list received from node of another cluster
-	def update_neighbor(self, node_ip, node_port, neighbor_list):
+	def update_neighbor(self, friend_ip, friend_port, new_node_ip, new_node_port, new_node_neighbor_list):
+		print "Update request from : (", friend_ip, "," , friend_port, ")"
 		global my_neighbor, my_ip, my_port
-		print "(", my_ip , "," , my_port, ")== Update ==>(", node_ip , "," , node_port, ")"
-		if (node_ip, node_port) not in my_neighbor:
-			return False
-		for n in neighbor_list:
-			my_neighbor.append(n)
 
-	def join(self, node_ip, node_port, neighbor_list):
-		global my_neighbor, my_ip, my_port
-		print "(",my_ip,",",my_port,")== Join ==>(",node_ip,",",node_port,")"
-		if (node_ip, node_port) in my_neighbor:
+		# Check if trusted node is sending the request
+		if (friend_ip, friend_port) not in my_neighbor:
+			print "Update request received from untrusted party"
 			return False
-		my_old_neighbor = my_neighbor
-		neighbor_list.append((node_ip, node_port))
-		for my_n in my_neighbor:
+		
+		# Add new node and its neighbor to the neighbor address
+		print "New node joining the group : (", new_node_ip , "," , new_node_port, ")"
+		if (new_node_ip, new_node_port) in my_neighbor: #This condition failing for some reason
+			print "Node already present in our group"	
+			return False
+		my_neighbor.append((new_node_ip, new_node_port))	
+		for (n_ip, n_port) in new_node_neighbor_list:
+			my_neighbor.append((n_ip, n_port))
+		print "New node successfully added to the group"
+		print 'Press any button to reuturn to main screen'
+		wait = raw_input()
+
+	def join(self, peer_node_ip, peer_node_port, neighbor_list):
+		global my_neighbor, my_ip, my_port
+		print "Join request received from, ", "(", peer_node_ip,",", peer_node_port,")"
+		if (peer_node_ip, peer_node_port) in my_neighbor:
+			print "Redundant request : Node already connected"
+			return False
+		my_old_neighbor = my_neighbor[:]
+		for (neighbor_ip, neighbor_port) in my_neighbor:
 			# Proxy is the server in contact and client in the local context
-			proxy_addr = "http://"+node_ip+":"+str(node_port)+"/"
+			proxy_addr = "http://"+neighbor_ip+":"+str(neighbor_port)+"/"
 			proxy  = xmlrpclib.ServerProxy(proxy_addr, allow_none=True)
-			proxy.update_neighbor(my_ip, my_port, neighbor_list)
-		my_neighbor.append((node_ip, node_port))
-		print my_neighbor
+			proxy.update_neighbor(my_ip, my_port, peer_node_ip, peer_node_port ,neighbor_list)
+		my_neighbor.append((peer_node_ip, peer_node_port))
+		print "Join request Approved. New node added to the group"
 		return ((my_ip, my_port), my_old_neighbor)
 
 	def sign_out(self, node_ip, node_port):
 		global my_neighbor
 		my_neighbor.remove((node_ip, node_port))
-
-def run_client():
-	global my_neighbor, my_ip, my_port
-	proxy = xmlrpclib.ServerProxy("http://localhost:2000/", allow_none=True)
-	response = proxy.join(my_ip, my_port, my_neighbor)
-	if response != False:
-		(peer_address, neighbor_list) = response
-		my_neighbor.append(peer_address)
-	print my_neighbor
+		print "(", node_ip, ",", node_port, ")", "signed out of the group"
 
 def run_server():
 	global my_neighbor, my_ip, my_port
 	server = ThreadedXMLRPCServer(("localhost", my_port), allow_none=True)
 	server.register_instance(MethodLibrary())
 	server.serve_forever()
-	# Make an interface for join and signup
-	#if my_port != 2000:
-	#	client = threading.Thread(target=run_client)
-	#	client.setDaemon(True)
-	#	client.start()
-	#	client.join()
-
 
 def updateFunction():
 	print "Updated"
@@ -87,16 +85,21 @@ def join():
 	response = peer.join(my_ip, my_port, my_neighbor)
 	if response != False:
 		print "Join Request Successful"
-		(peer_address, neighbor_list) = response
-		my_neighbor.append(peer_address)
+		((peer_ip, peer_port), peer_neighbor_list) = response
+		my_neighbor.append((peer_ip, peer_port))
+		for (n_ip, n_port) in peer_neighbor_list:
+			my_neighbor.append((n_ip, n_port))
 	else:
 		print "Join Request Fail"
+	print 'Press any button to reuturn to main screen'
+	wait = raw_input()
 
 def printPeerAddress():
 	global my_neighbor
 	print "Peer Address"
 	print my_neighbor
-        lol = input()
+	print 'Press any button to reuturn to main screen'
+	wait = raw_input()
 
 def sign_off():
 	global my_neighbor, my_ip, my_port
@@ -109,12 +112,17 @@ def startDistReadWrite():
 	print "asdfasf"
 	lol = input()
 
+def terminateProgram():
+	sys.exit()
+	
 def clientMenu():
 	clientMenu = menu.Menu("Distributed Read/Write")
 	options = [{"name":"Start Distributed Read/Write","function":startDistReadWrite},
-			{"name":"Join","function":join},
-			{"name":"Sign Off","function":sign_off},
-			{"name":"Print Peer Address","function":printPeerAddress}]
+		{"name":"Join","function":join},
+		{"name":"Sign Off","function":sign_off},
+		{"name":"Print Peer Address","function":printPeerAddress},
+		{"name":"Terminate program","function":terminateProgram},
+		]
 	clientMenu.addOptions(options)
 	clientMenu.open()
 
