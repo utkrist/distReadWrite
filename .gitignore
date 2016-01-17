@@ -1,2 +1,11 @@
-build*
+build
 *~
+*.o
+Makefile
+*.sty
+*.cls
+*log*
+*.tex
+*.gz
+*.aux
+*README*
