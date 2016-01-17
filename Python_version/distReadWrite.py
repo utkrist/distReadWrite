@@ -87,10 +87,18 @@ def join():
 	else:
 		print "Join Request Successful"
 		((peer_ip, peer_port), peer_neighbor_list) = response
-		my_neighbor.append((peer_ip, peer_port))
+
+		# Update list of neighbours in the cluser
+		for (neighbor_ip, neighbor_port) in my_neighbor:
+			proxy_addr = "http://"+neighbor_ip+":"+str(neighbor_port)+"/"
+			proxy  = xmlrpclib.ServerProxy(proxy_addr, allow_none=True)
+			proxy.update_neighbor(my_ip, my_port, peer_ip, peer_port , peer_neighbor_list)
+		
+		# Update own neighbor list
 		for (n_ip, n_port) in peer_neighbor_list:
 			my_neighbor.append((n_ip, n_port))
-
+		my_neighbor.append((peer_ip, peer_port))
+		
 	print 'Press any button to return to main screen'
 	wait = raw_input()
 
