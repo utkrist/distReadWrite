@@ -1,23 +1,11 @@
-'''
-TODO
-* Synchronisation of join
-  - Way to deal with inconsistency when two separate clusters try to join the the network simultaneously
-    or to put it into perspectve : what to do about the request to join from a cluster when a network update is in progress.
-* Synchronisation of join
-'''
-
 import xmlrpclib, sys, argparse, threading, SocketServer, menu
-from SimpleXMLRPCServer import SimpleXMLRPCServer
-
-# Some constants
-IP = 0
-PORT = 1                      
+from SimpleXMLRPCServer import SimpleXMLRPCServer                   
 
 # Network address of the current node
-my_ip = "localhost"
-my_port =  2000
+my_ip   = 'localhost'
+global my_port, my_uuid
 
-# Store ip_addr and port of each neighbor
+# Stores (uuid, ip_addr, port) of each connected node
 my_neighbor = []                      
 
 # Mix-in for threaded xmlrpc server
@@ -36,22 +24,27 @@ class MethodLibrary:
 		
 		# Add new node and its neighbor to the neighbor address
 		print "New node joining the group : (", new_node_ip , "," , new_node_port, ")"
-		if (new_node_ip, new_node_port) in my_neighbor: #This condition failing for some reason
-			print "Node already present in our group"	
+		if (new_node_ip, new_node_port) in my_neighbor:
+			print "Node already present in our group"
 			return False
+
 		my_neighbor.append((new_node_ip, new_node_port))	
 		for (n_ip, n_port) in new_node_neighbor_list:
 			my_neighbor.append((n_ip, n_port))
+		
 		print "New node successfully added to the group"
-		print 'Press any button to reuturn to main screen'
-		wait = raw_input()
+		#print 'Press any button to return to main screen'
+		#wait = raw_input()
 
 	def join(self, peer_node_ip, peer_node_port, neighbor_list):
 		global my_neighbor, my_ip, my_port
 		print "Join request received from, ", "(", peer_node_ip,",", peer_node_port,")"
+		
+		# Check if node is already in connection
 		if (peer_node_ip, peer_node_port) in my_neighbor:
 			print "Redundant request : Node already connected"
 			return False
+
 		my_old_neighbor = my_neighbor[:]
 		for (neighbor_ip, neighbor_port) in my_neighbor:
 			# Proxy is the server in contact and client in the local context
@@ -59,6 +52,7 @@ class MethodLibrary:
 			proxy  = xmlrpclib.ServerProxy(proxy_addr, allow_none=True)
 			proxy.update_neighbor(my_ip, my_port, peer_node_ip, peer_node_port ,neighbor_list)
 		my_neighbor.append((peer_node_ip, peer_node_port))
+		
 		print "Join request Approved. New node added to the group"
 		return ((my_ip, my_port), my_old_neighbor)
 
@@ -77,21 +71,27 @@ def updateFunction():
 	print "Updated"
 
 def join():
-	peer_ip = input('Ip address of the node to join: ')
-	peer_port = input('Port of the node: ')
-	peer_address = 'http://' + peer_ip + ':' + str(peer_port) + '/' 
 	global my_neighbor, my_ip, my_port
+	peer_ip = raw_input('Ip address of the node to join: ')
+	peer_port = raw_input('Port of the node: ')
+	
+	# Cannot connect to self		
+	if (peer_ip, peer_port) == (my_ip, str(my_port)):
+		return
+
+	peer_address = 'http://' + peer_ip + ':' + str(peer_port) + '/' 
 	peer = xmlrpclib.ServerProxy(peer_address, allow_none=True)
 	response = peer.join(my_ip, my_port, my_neighbor)
-	if response != False:
+	if response == False:
+		print "Join Request Fail"
+	else:
 		print "Join Request Successful"
 		((peer_ip, peer_port), peer_neighbor_list) = response
 		my_neighbor.append((peer_ip, peer_port))
 		for (n_ip, n_port) in peer_neighbor_list:
 			my_neighbor.append((n_ip, n_port))
-	else:
-		print "Join Request Fail"
-	print 'Press any button to reuturn to main screen'
+
+	print 'Press any button to return to main screen'
 	wait = raw_input()
 
 def printPeerAddress():
@@ -107,39 +107,49 @@ def sign_off():
 		peer_addr = "http://" + peer_ip + ":" + str(peer_port) + "/"
 		peer  = xmlrpclib.ServerProxy(peer_addr, allow_none=True)
 		peer.sign_out(my_ip, my_port)
+	my_neighbor = []
 
 def startDistReadWrite():
 	print "asdfasf"
-	lol = input()
-
-def terminateProgram():
-	sys.exit()
 	
 def clientMenu():
-	clientMenu = menu.Menu("Distributed Read/Write")
+	menuInterface = menu.Menu("Distributed Read/Write")
 	options = [{"name":"Start Distributed Read/Write","function":startDistReadWrite},
 		{"name":"Join","function":join},
 		{"name":"Sign Off","function":sign_off},
 		{"name":"Print Peer Address","function":printPeerAddress},
-		{"name":"Terminate program","function":terminateProgram},
+		{"name":"Terminate program","function":sys.exit},
 		]
-	clientMenu.addOptions(options)
-	clientMenu.open()
+	menuInterface.addOptions(options)
+	menuInterface.open()
+	
+if __name__ == "__main__":
+	# Get port number as command line input
+	parser = argparse.ArgumentParser(prog='distReadWrite', 
+				description='This program performs distributed read write in a logical network.')
+	parser.add_argument('port', help='port number for the program to listen to', nargs=1, type=int)
+	my_port = int(parser.parse_args().port[0])
 
-def main():
-	global my_port
+	# Start server thread
 	serverThread = threading.Thread(target=run_server)
 	serverThread.setDaemon(True)
 	serverThread.start()
+	
+	# Start client interface
 	clientMenu()
 	serverThread.join()
-
-def parse_args():
-	global my_port
-	parser = argparse.ArgumentParser(prog='distReadWrite', description='This program performs distributed read write in a logical network.')
-	parser.add_argument('port', help='port number for the program to listen to', nargs=1, type=int)
-	my_port = int(parser.parse_args().port[0])
 	
-if __name__ == "__main__":
-	parse_args()	
-	main()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
