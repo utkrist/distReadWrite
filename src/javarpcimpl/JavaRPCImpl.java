@@ -27,6 +27,9 @@ public class JavaRPCImpl {
         ClientThread clientThreadInst = new ClientThread();
         clientThreadInst.start();
         
+         PollingThread thrdObj = new PollingThread();            
+         thrdObj.start();    //polling thread starting
+        
         } catch (Exception ex) {
            ex.printStackTrace();
         }

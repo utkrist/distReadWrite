@@ -49,6 +49,8 @@ public class ClientThread extends Thread {
 
             BufferedReader input = new BufferedReader(new InputStreamReader(System.in));
 
+           
+            
             while (true) {
 
                 System.out.println("\n Select Operation to be performed :");
@@ -72,7 +74,7 @@ public class ClientThread extends Thread {
                     default:
                         System.out.println("Wrong Option Selected");
                         break;
-                }              
+                }
             }
 
         } catch (Exception ex) {
@@ -98,7 +100,10 @@ public class ClientThread extends Thread {
 
     public void signOff() {
         RPCClient myClient = new RPCClient();
-            myClient.sendSignOff();
+        if (myClient.sendSignOff() >= 0) {
+            System.out.println("Sign off Operation completed");
+        } else {
+            System.out.println("No host in the network");
+        }
     }
-
 }
